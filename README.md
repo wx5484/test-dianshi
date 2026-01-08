@@ -36,3 +36,9 @@ NEXT_PUBLIC_DOUBAN_IMAGE_PROXY_TYPE 选项解释：
 - cmliussss-cdn-tencent：由浏览器请求豆瓣 CDN，该 CDN 由 [CMLiussss](https://github.com/cmliu) 搭建，并由腾讯云 cdn 提供加速
 - cmliussss-cdn-ali：由浏览器请求豆瓣 CDN，该 CDN 由 [CMLiussss](https://github.com/cmliu) 搭建，并由阿里云 cdn 提供加速
 - custom: 用户自定义 proxy，由 NEXT_PUBLIC_DOUBAN_IMAGE_PROXY 定义
+
+- 用 Upstash 替代
+在环境变量中添加：
+NEXT_PUBLIC_STORAGE_TYPE = upstash
+UPSTASH_URL = 你的 HTTPS endpoint
+UPSTASH_TOKEN = 你的 token
