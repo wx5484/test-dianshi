@@ -1,0 +1,33 @@
+name: Build Docker Image
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        # 这里强制指定 linux/amd64 架构，确保你的 VPS 能跑
+        run: |
+          docker build --platform linux/amd64 -t my-dianshi:latest .
+
+      - name: Save Image to File
+        run: |
+          docker save -o dianshi.tar my-dianshi:latest
+          gzip dianshi.tar
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: dianshi.tar.gz
+          retention-days: 1
