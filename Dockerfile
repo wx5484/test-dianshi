@@ -1,22 +1,23 @@
 # ==========================================
-# 1. 依赖安装阶段 (使用 Debian Slim)
+# 1. 依赖安装阶段 (使用完整版 Node 镜像，自带编译工具)
 # ==========================================
-FROM node:20-slim AS base
-
-FROM base AS deps
+# 【关键修改】这里改用 node:20 完整版，不再用 slim
+# 完整版包含 python, make, g++，能解决所有编译报错
+FROM node:20 AS deps
 WORKDIR /app
 
 # 复制依赖文件
 COPY package.json package-lock.json* ./
 
-# 【关键修改】这里把 npm ci 改成了 npm install
-# 这样即使没有 lock 文件或者版本不对也能成功安装
-RUN npm install
+# 【关键修改】加上 --legacy-peer-deps 忽略版本冲突
+# 加上 --no-audit 加快速度
+# 即使有依赖打架，也能强制安装成功
+RUN npm install --legacy-peer-deps --no-audit
 
 # ==========================================
-# 2. 构建阶段
+# 2. 构建阶段 (依然使用完整版)
 # ==========================================
-FROM base AS builder
+FROM node:20 AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -28,9 +29,10 @@ ENV NEXT_TELEMETRY_DISABLED 1
 RUN npm run build
 
 # ==========================================
-# 3. 运行阶段 (生产环境)
+# 3. 运行阶段 (使用 Slim 版以减小体积)
 # ==========================================
-FROM base AS runner
+# 运行时不需要编译工具，所以这里可以用 slim
+FROM node:20-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV production
