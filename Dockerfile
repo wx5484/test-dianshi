@@ -1,37 +1,23 @@
 # ==========================================
-# 1. 依赖安装阶段 (使用完整版 Node 镜像，自带编译工具)
-# ==========================================
-# 【关键修改】这里改用 node:20 完整版，不再用 slim
-# 完整版包含 python, make, g++，能解决所有编译报错
-FROM node:20 AS deps
-WORKDIR /app
-
-# 复制依赖文件
-COPY package.json package-lock.json* ./
-
-# 【关键修改】加上 --legacy-peer-deps 忽略版本冲突
-# 加上 --no-audit 加快速度
-# 即使有依赖打架，也能强制安装成功
-RUN npm install --legacy-peer-deps --no-audit
-
-# ==========================================
-# 2. 构建阶段 (依然使用完整版)
+# 1. 构建阶段 (Builder)
+# 直接使用完整版 Node 20，安装和构建在同一步完成
 # ==========================================
 FROM node:20 AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+
+# 复制所有源代码
 COPY . .
 
-# 禁用 Next.js 遥测
-ENV NEXT_TELEMETRY_DISABLED 1
+# 1. 强制安装依赖 (忽略冲突)
+RUN npm install --legacy-peer-deps
 
-# 开始构建
+# 2. 立即开始构建 (因为在同一个阶段，绝对能找到 next 命令)
 RUN npm run build
 
 # ==========================================
-# 3. 运行阶段 (使用 Slim 版以减小体积)
+# 2. 运行阶段 (Runner)
+# 使用 Slim 版减小体积
 # ==========================================
-# 运行时不需要编译工具，所以这里可以用 slim
 FROM node:20-slim AS runner
 WORKDIR /app
 
@@ -45,9 +31,8 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # 复制构建产物
+# 注意：这里直接从 builder 阶段复制，路径不会错
 COPY --from=builder /app/public ./public
-
-# 自动生成的独立运行包
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
