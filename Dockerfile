@@ -9,8 +9,9 @@ WORKDIR /app
 # 复制依赖文件
 COPY package.json package-lock.json* ./
 
-# 安装依赖
-RUN npm ci
+# 【关键修改】这里把 npm ci 改成了 npm install
+# 这样即使没有 lock 文件或者版本不对也能成功安装
+RUN npm install
 
 # ==========================================
 # 2. 构建阶段
