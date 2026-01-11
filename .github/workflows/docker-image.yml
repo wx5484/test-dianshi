@@ -74,7 +74,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.meta.outputs.labels }}
           # 修改为你的仓库地址
-          #tags: ghcr.io/wx5484/test-dianshi:${{ github.event.inputs.tag || 'latest' }}
+          tags: ghcr.io/wx5484/test-dianshi:${{ github.event.inputs.tag || 'latest' }}
           # 修改为你的仓库地址
           outputs: type=image,name=ghcr.io/wx5484/test-dianshi,name-canonical=true,push=true
 
