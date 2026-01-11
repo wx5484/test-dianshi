@@ -1,59 +1,55 @@
-# ---- 第 1 阶段：安装依赖 ----
-FROM node:20-alpine AS deps
+# ==========================================
+# 1. 依赖安装阶段 (使用 Debian Slim)
+# ==========================================
+FROM node:20-slim AS base
 
-# 启用 corepack 并激活 pnpm（Node20 默认提供 corepack）
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
+FROM base AS deps
 WORKDIR /app
 
-# 仅复制依赖清单，提高构建缓存利用率
-COPY package.json pnpm-lock.yaml ./
+# 复制依赖文件
+COPY package.json package-lock.json* ./
 
-# 安装所有依赖（含 devDependencies，后续会裁剪）
-RUN pnpm install --frozen-lockfile
+# 安装依赖
+RUN npm ci
 
-# ---- 第 2 阶段：构建项目 ----
-FROM node:20-alpine AS builder
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# ==========================================
+# 2. 构建阶段
+# ==========================================
+FROM base AS builder
 WORKDIR /app
-
-# 复制依赖
 COPY --from=deps /app/node_modules ./node_modules
-# 复制全部源代码
 COPY . .
 
-# 在构建阶段也显式设置 DOCKER_ENV，
-ENV DOCKER_ENV=true
+# 禁用 Next.js 遥测
+ENV NEXT_TELEMETRY_DISABLED 1
 
-# 生成生产构建
-RUN pnpm run build
+# 开始构建
+RUN npm run build
 
-# ---- 第 3 阶段：生成运行时镜像 ----
-FROM node:20-alpine AS runner
+# ==========================================
+# 3. 运行阶段 (生产环境)
+# ==========================================
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED 1
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
 
 # 创建非 root 用户
-RUN addgroup -g 1001 -S nodejs && adduser -u 1001 -S nextjs -G nodejs
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
 
-WORKDIR /app
-ENV NODE_ENV=production
-ENV HOSTNAME=0.0.0.0
-ENV PORT=3000
-ENV DOCKER_ENV=true
+# 复制构建产物
+COPY --from=builder /app/public ./public
 
-# 从构建器中复制 standalone 输出
+# 自动生成的独立运行包
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-# 从构建器中复制 scripts 目录
-COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
-# 从构建器中复制 start.js
-COPY --from=builder --chown=nextjs:nodejs /app/start.js ./start.js
-# 从构建器中复制 public 和 .next/static 目录
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# 切换到非特权用户
 USER nextjs
 
 EXPOSE 3000
 
-# 使用自定义启动脚本，先预加载配置再启动服务器
-CMD ["node", "start.js"] 
+CMD ["node", "server.js"]
