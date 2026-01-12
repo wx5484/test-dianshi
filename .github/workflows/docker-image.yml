@@ -9,7 +9,7 @@ on:
         default: ''
         type: string
       tag:
-        description: 'Docker 标签'
+        description: 'Docker'
         required: false
         default: 'latest'
         type: string
