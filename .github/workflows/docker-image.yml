@@ -43,8 +43,6 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      # --- 关键修复：添加 QEMU 支持 ---
-      # 如果没有这个，构建 ARM64 镜像时可能会失败或产出损坏的镜像
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
